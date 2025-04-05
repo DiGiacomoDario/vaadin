@@ -1,0 +1,81 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.3'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'com.vaadin' version '24.3.0'
+}
+
+group = 'com.race'
+version = '1.0-SNAPSHOT'
+sourceCompatibility = '21'
+targetCompatibility = '21'
+
+repositories {
+    mavenCentral()
+    maven { 
+        url "https://maven.vaadin.com/vaadin-addons" 
+    }
+}
+
+ext {
+    set('vaadinVersion', "24.3.0")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "com.vaadin:vaadin-bom:${vaadinVersion}"
+    }
+}
+
+dependencies {
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Vaadin
+    implementation 'com.vaadin:vaadin'
+    implementation 'com.vaadin:vaadin-spring-boot-starter'
+
+    // Base de datos H2
+    runtimeOnly 'com.h2database:h2'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+bootJar {
+    enabled = true
+    mainClass = 'com.race.snow.Application'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// Configuración específica para Vaadin
+vaadin {
+    productionMode=false
+    optimizeBundle=false
+}
+
+// Tarea para verificar la instalación de Node.js y pnpm
+task checkNodeTools {
+    doFirst {
+        try {
+            exec {
+                commandLine 'C:\\Program Files\\nodejs\\node.exe', '--version'
+            }
+            exec {
+                commandLine 'C:\\Users\\dario\\AppData\\Roaming\\npm\\pnpm.cmd', '--version'
+            }
+        } catch (Exception e) {
+            throw new GradleException("Node.js o pnpm no están instalados correctamente. Por favor, instala Node.js desde https://nodejs.org/ y luego ejecuta 'npm install -g pnpm@latest'")
+        }
+    }
+}
+
+tasks.named('vaadinPrepareFrontend') {
+    dependsOn checkNodeTools
+} 
