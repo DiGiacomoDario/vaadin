@@ -25,6 +25,10 @@ public class UserService {
         return userRepository.findAll();
     }
 
+    public List<User> findAllManagers() {
+        return userRepository.findByRolesContaining("ROLE_GERENTE");
+    }
+
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
     }
@@ -35,15 +39,7 @@ public class UserService {
 
     public User save(User user) {
         if (user.getId() == null) {
-            // New user, encode password
             user.setPassword(passwordEncoder.encode(user.getPassword()));
-        } else {
-            // Existing user, check if password changed
-            userRepository.findById(user.getId()).ifPresent(existingUser -> {
-                if (!user.getPassword().equals(existingUser.getPassword())) {
-                    user.setPassword(passwordEncoder.encode(user.getPassword()));
-                }
-            });
         }
         return userRepository.save(user);
     }
@@ -52,29 +48,18 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    public void deleteById(Long id) {
-        userRepository.deleteById(id);
+    public void updateProfile(User user, String name, String email) {
+        user.setName(name);
+        user.setEmail(email);
+        userRepository.save(user);
     }
 
-    public boolean existsByUsername(String username) {
-        return userRepository.existsByUsername(username);
-    }
-
-    public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
-    public void initializeDefaultUsers() {
-        if (!existsByUsername("admin")) {
-            User admin = new User("admin", "admin", "Administrator", "admin@example.com");
-            admin.addRole("admin");
-            save(admin);
+    public boolean changePassword(User user, String currentPassword, String newPassword) {
+        if (passwordEncoder.matches(currentPassword, user.getPassword())) {
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+            return true;
         }
-        
-        if (!existsByUsername("gerente")) {
-            User manager = new User("gerente", "gerente", "Gerente Demo", "gerente@example.com");
-            manager.addRole("gerente");
-            save(manager);
-        }
+        return false;
     }
 }

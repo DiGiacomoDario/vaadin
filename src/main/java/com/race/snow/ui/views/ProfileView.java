@@ -6,9 +6,9 @@ import com.race.snow.ui.MainLayout;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
@@ -17,112 +17,130 @@ import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.binder.ValidationException;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import jakarta.annotation.security.PermitAll;
 
 @Route(value = "profile", layout = MainLayout.class)
-@PageTitle("Mi Perfil | Agenda Gerencial")
+@PageTitle("Mi Perfil | Calendario Gerentes")
 @PermitAll
 public class ProfileView extends VerticalLayout {
-
-    private final UserService userService;
-    private User currentUser;
     
-    private final TextField name = new TextField("Nombre");
-    private final EmailField email = new EmailField("Email");
-    private final PasswordField password = new PasswordField("Nueva Contraseña");
-    private final PasswordField confirmPassword = new PasswordField("Confirmar Contraseña");
+    private final UserService userService;
+    private final User currentUser;
+    
+    private final TextField nameField = new TextField("Nombre");
+    private final EmailField emailField = new EmailField("Email");
+    private final TextField usernameField = new TextField("Nombre de usuario");
+    
+    private final PasswordField currentPasswordField = new PasswordField("Contraseña actual");
+    private final PasswordField newPasswordField = new PasswordField("Nueva contraseña");
+    private final PasswordField confirmPasswordField = new PasswordField("Confirmar contraseña");
     
     private final Binder<User> binder = new Binder<>(User.class);
-
-    @Autowired
+    
     public ProfileView(UserService userService) {
         this.userService = userService;
         
+        // Obtener usuario actual
+        String username = ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername();
+        currentUser = userService.findByUsername(username).orElseThrow();
+        
         addClassName("profile-view");
-        setMaxWidth("600px");
-        setAlignItems(Alignment.CENTER);
+        setSpacing(true);
+        setPadding(true);
         
-        loadCurrentUser();
-        configureForm();
+        // Formulario de información general
+        H2 generalInfoTitle = new H2("Información Personal");
+        FormLayout generalInfoForm = new FormLayout();
         
-        Button saveButton = new Button("Guardar", e -> saveProfile());
-        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        usernameField.setReadOnly(true);
         
-        add(createFormLayout(), new HorizontalLayout(saveButton));
-    }
-    
-    private void loadCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
+        binder.forField(nameField).asRequired("El nombre es obligatorio").bind(User::getName, User::setName);
+        binder.forField(emailField).asRequired("El email es obligatorio").bind(User::getEmail, User::setEmail);
+        binder.forField(usernameField).bind(User::getUsername, User::setUsername);
         
-        currentUser = userService.findByUsername(username)
-                .orElseThrow(() -> new IllegalStateException("Usuario no encontrado: " + username));
-    }
-    
-    private void configureForm() {
-        binder.forField(name)
-            .asRequired("El nombre es obligatorio")
-            .bind(User::getName, User::setName);
-            
-        binder.forField(email)
-            .asRequired("El email es obligatorio")
-            .withValidator(email -> email.contains("@"), "Ingrese un email válido")
-            .bind(User::getEmail, User::setEmail);
+        Button saveGeneralInfoButton = new Button("Guardar cambios");
+        saveGeneralInfoButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveGeneralInfoButton.addClickListener(event -> saveGeneralInfo());
         
-        // No binding for password fields as they are special cases
+        generalInfoForm.add(nameField, emailField, usernameField);
         
-        if (currentUser != null) {
-            binder.readBean(currentUser);
-        }
-    }
-    
-    private FormLayout createFormLayout() {
-        FormLayout formLayout = new FormLayout();
+        // Formulario de cambio de contraseña
+        H2 passwordTitle = new H2("Cambiar Contraseña");
+        FormLayout passwordForm = new FormLayout();
         
-        password.setHelperText("Dejar en blanco para mantener la contraseña actual");
-        confirmPassword.setHelperText("Repita la nueva contraseña");
+        Button changePasswordButton = new Button("Cambiar contraseña");
+        changePasswordButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        changePasswordButton.addClickListener(event -> changePassword());
         
-        formLayout.add(name, email, password, confirmPassword);
-        formLayout.setMaxWidth("100%");
-        formLayout.setResponsiveSteps(
-                new FormLayout.ResponsiveStep("0", 1),
-                new FormLayout.ResponsiveStep("500px", 2)
+        passwordForm.add(currentPasswordField, newPasswordField, confirmPasswordField);
+        
+        // Cargar datos actuales
+        binder.readBean(currentUser);
+        
+        add(
+            generalInfoTitle,
+            generalInfoForm,
+            saveGeneralInfoButton,
+            passwordTitle,
+            passwordForm,
+            changePasswordButton
         );
-        
-        return formLayout;
     }
     
-    private void saveProfile() {
+    private void saveGeneralInfo() {
         try {
             binder.writeBean(currentUser);
-            
-            // Handle password change logic
-            if (!password.getValue().isEmpty()) {
-                if (!password.getValue().equals(confirmPassword.getValue())) {
-                    Notification.show("Las contraseñas no coinciden")
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                    return;
-                }
-                
-                // Set the new password
-                currentUser.setPassword(password.getValue());
-            }
-            
             userService.save(currentUser);
-            
-            Notification.show("Perfil actualizado correctamente")
-                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                
-            // Clear password fields
-            password.clear();
-            confirmPassword.clear();
-            
+            showSuccess("Datos actualizados correctamente");
         } catch (ValidationException e) {
-            Notification.show("Error al guardar: " + e.getMessage())
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            showError("Por favor, corrija los errores en el formulario");
         }
+    }
+    
+    private void changePassword() {
+        if (currentPasswordField.isEmpty()) {
+            showError("Debe ingresar su contraseña actual");
+            return;
+        }
+        
+        if (newPasswordField.isEmpty()) {
+            showError("Debe ingresar una nueva contraseña");
+            return;
+        }
+        
+        if (!newPasswordField.getValue().equals(confirmPasswordField.getValue())) {
+            showError("Las contraseñas no coinciden");
+            return;
+        }
+        
+        boolean success = userService.changePassword(
+            currentUser, 
+            currentPasswordField.getValue(), 
+            newPasswordField.getValue()
+        );
+        
+        if (success) {
+            showSuccess("Contraseña actualizada correctamente");
+            currentPasswordField.clear();
+            newPasswordField.clear();
+            confirmPasswordField.clear();
+        } else {
+            showError("La contraseña actual es incorrecta");
+        }
+    }
+    
+    private void showSuccess(String message) {
+        Notification notification = Notification.show(message);
+        notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        notification.setPosition(Notification.Position.TOP_CENTER);
+    }
+    
+    private void showError(String message) {
+        Notification notification = Notification.show(message);
+        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        notification.setPosition(Notification.Position.TOP_CENTER);
     }
 }

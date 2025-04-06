@@ -8,26 +8,28 @@ import com.race.snow.ui.MainLayout;
 import com.race.snow.ui.components.EventForm;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.vaadin.stefan.fullcalendar.Entry;
 import org.vaadin.stefan.fullcalendar.FullCalendar;
 import org.vaadin.stefan.fullcalendar.FullCalendarBuilder;
 import org.vaadin.stefan.fullcalendar.Timezone;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Route(value = "", layout = MainLayout.class)
-@PageTitle("Calendario | Agenda Gerencial")
+@PageTitle("Calendario | Calendario Gerentes")
 @PermitAll
 public class CalendarView extends VerticalLayout {
 
@@ -57,7 +59,10 @@ public class CalendarView extends VerticalLayout {
         // Add new event button
         Button addEventButton = new Button("Nuevo Evento", e -> openEventDialog(new Event()));
         
-        add(addEventButton, calendar);
+        Div calendarContainer = new Div(calendar);
+        calendarContainer.setSizeFull();
+        
+        add(addEventButton, calendarContainer);
         
         // Load events
         loadEvents();
@@ -65,7 +70,7 @@ public class CalendarView extends VerticalLayout {
     
     private void setupCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
+        String username = ((UserDetails) authentication.getPrincipal()).getUsername();
         
         Optional<User> userOptional = userService.findByUsername(username);
         if (userOptional.isPresent()) {
@@ -109,7 +114,7 @@ public class CalendarView extends VerticalLayout {
     
     private void openEventDialog(Event event) {
         Dialog dialog = new Dialog();
-        dialog.setWidth("500px");
+        dialog.setWidth("600px");
         
         EventForm form = new EventForm(event, currentUser);
         

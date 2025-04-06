@@ -30,7 +30,7 @@ public class EventService {
         return eventRepository.findByUser(user);
     }
 
-    public List<Event> findByUserAndTimeRange(User user, LocalDateTime start, LocalDateTime end) {
+    public List<Event> findByUserAndDateRange(User user, LocalDateTime start, LocalDateTime end) {
         return eventRepository.findByUserAndStartBetween(user, start, end);
     }
 
@@ -42,13 +42,11 @@ public class EventService {
         boolean isNew = event.getId() == null;
         Event savedEvent = eventRepository.save(event);
         
-        // Send notification email
-        if (event.getUser() != null && event.getUser().getEmail() != null) {
-            if (isNew) {
-                emailService.sendEventCreatedNotification(event);
-            } else {
-                emailService.sendEventUpdatedNotification(event);
-            }
+        // Enviar notificación por correo electrónico
+        if (isNew) {
+            emailService.sendEventCreationNotification(event);
+        } else {
+            emailService.sendEventUpdateNotification(event);
         }
         
         return savedEvent;
