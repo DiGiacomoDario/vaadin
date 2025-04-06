@@ -3,3 +3,49 @@
 
 # Ignore Gradle build output directory
 build
+
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+!gradle/wrapper/gradle-wrapper.jar
+
+# Logs
+*.log
+log/
+logs/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+
+# Node.js and Vaadin
+node_modules/
+frontend/generated/
+package-lock.json
+webpack.config.js
+webpack.generated.js
+node/
+
+# Environment variables
+.env
+.env.local
+
+# H2 database files
+*.db
+
+# Vaadin specific
+vite.config.ts
+vite.generated.ts
+tsconfig.json
+types.d.ts
+pnpm-lock.yaml
